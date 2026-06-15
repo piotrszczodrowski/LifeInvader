@@ -18,6 +18,8 @@ abstract class Controller
         $this->twig = new Environment($loader, [
             'cache' => false,
         ]);
+
+        $this->twig->addGlobal('session', $_SESSION ?? []);
     }
 
     // method for controllers to get views

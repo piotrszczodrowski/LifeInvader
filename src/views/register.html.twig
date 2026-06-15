@@ -1,0 +1,71 @@
+{% extends "base.html.twig" %}
+{% block title %}Rejestracja - LifeInvader{% endblock %}
+{% block content %}
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 rounded-4 p-4">
+                <h2 class="fw-bold mb-4 text-center">Dołącz do LifeInvader</h2>
+
+                {% if error %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endif %}
+
+                <form action="/register" method="POST">
+                    <div class="mb-3">
+                        <label for="register-username" class="form-label">Nazwa użytkownika</label>
+                        <input type="text" id="register-username" name="username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="register-email" class="form-label">Adres e-mail</label>
+                        <input type="email" id="register-email" name="email" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="register-password" class="form-label">Hasło</label>
+                        <div class="input-group">
+                            <input type="password" id="register-password" name="password" class="form-control toggle-target" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="register-password-confirm" class="form-label">Powtórz hasło</label>
+                        <div class="input-group">
+                            <input type="password" id="register-password-confirm" name="password_confirm" class="form-control toggle-target" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill">Zarejestruj się</button>
+                </form>
+                <div class="text-center mt-3">
+                    <span class="text-muted">Masz już konto?</span> <a href="/login" class="text-decoration-none">Zaloguj się</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                 const passwordInputs = document.querySelectorAll('.toggle-target');
+                const icons = document.querySelectorAll('.toggle-password i');
+
+                const isPassword = passwordInputs[0].type === 'password';
+
+                passwordInputs.forEach(input => {
+                    input.type = isPassword ? 'text' : 'password';
+                });
+
+                icons.forEach(icon => {
+                    if (isPassword) {
+                        icon.classList.replace('bi-eye', 'bi-eye-slash');
+                    } else {
+                        icon.classList.replace('bi-eye-slash', 'bi-eye');
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}
