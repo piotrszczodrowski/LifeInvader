@@ -1,0 +1,14 @@
+{
+  "name": "pjatk/lifeinvader",
+  "description": "Projekt 15 - Siec Spolecznosciowa",
+  "require": {
+    "twig/twig": "^3.0",
+    "vlucas/phpdotenv": "^5.6",
+    "symfony/var-dumper": "^7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  }
+}

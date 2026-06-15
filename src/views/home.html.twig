@@ -1,0 +1,12 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Strona główna - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <div class="p-5 mb-4 bg-white rounded-3 shadow-sm border">
+        <div class="container-fluid py-2">
+            <h1 class="display-5 fw-bold text-dark">{{ naglowek }}</h1>
+            <p class="col-md-8 fs-4 text-muted">Baza danych odpowiada, a Twig renderuje widoki. Jesteśmy w domu.</p>
+        </div>
+    </div>
+{% endblock %}

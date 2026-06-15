@@ -1,0 +1,15 @@
+# Composer dependencies
+/vendor/
+
+# secrets and config
+.env
+
+# SQlite db files
+*.sqlite
+*.db
+
+# IDE config
+.idea/
+
+# system files
+.DS_Store
