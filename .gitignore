@@ -3,6 +3,8 @@
 
 # secrets and config
 .env
+/src/.env
+/src/install.lock
 
 # SQlite db files
 *.sqlite

@@ -8,6 +8,16 @@ $dotenv->load();
 // parse URL
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
+//check if already installed
+$lockFilePath = __DIR__ . '/install.lock';
+$isInstalled = file_exists($lockFilePath);
+
+//if not installed trigger install
+if (!$isInstalled && $uri !== '/install' && $uri !== '/install/run') {
+    header('Location: /install');
+    exit;
+}
+
 // simple MVP Router
 switch ($uri) {
     case '/':
@@ -16,10 +26,24 @@ switch ($uri) {
         $controller->index();
         break;
 
+    case '/install':
+        $controller = new \App\Controllers\InstallController();
+        $controller->index();
+        break;
+
+    case '/install/run':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $controller = new \App\Controllers\InstallController();
+            $controller->run();
+        } else {
+            header('Location: /install');
+        }
+        break;
+
     // another routes go here
 
     default:
-        http_response_code(404);
-        echo "Błąd 404 - Nie znaleziono takiej strony";
+        $errorController = new \App\Controllers\ErrorController();
+        $errorController->show(404, "Niestety, strona której szukasz nie istnieje lub została przeniesiona.");
         break;
 }

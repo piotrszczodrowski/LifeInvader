@@ -1,0 +1,16 @@
+{% extends "base.html.twig" %}
+{% block title %}Sukces - LifeInvader{% endblock %}
+{% block content %}
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6 text-center p-5 bg-white rounded-4 shadow border border-success">
+            <h1 class="fw-bold text-success mb-3">Instalacja zakończona!</h1>
+            <p class="text-muted fs-5 mb-4">
+                Struktura bazy danych została załadowana. Zarejestrowano konto:<br>
+                <strong>{{ email }}</strong>
+            </p>
+            <a href="/" class="btn btn-success btn-lg w-100 rounded-pill fw-bold">
+                Przejdź na stronę główną
+            </a>
+        </div>
+    </div>
+{% endblock %}
