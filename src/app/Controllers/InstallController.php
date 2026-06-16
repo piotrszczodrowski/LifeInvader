@@ -10,7 +10,20 @@ class InstallController extends Controller
 {
     public function index()
     {
-        $this->render('install_step1');
+       if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $sortBy = $_GET['sort'] ?? 'last_activity_at';
+        $postModel = new \App\Models\Post();
+        $posts = $postModel->getAll($sortBy);
+
+        echo $this->twig->render('home.html.twig', [
+            'posts' => $posts,
+            'current_sort' => $sortBy,
+            'user_id' => $_SESSION['user_id']
+        ]);
     }
 
     public function run()

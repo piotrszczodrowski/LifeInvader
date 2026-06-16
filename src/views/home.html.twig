@@ -1,12 +1,91 @@
-{% extends "base.html.twig" %}
-
-{% block title %}Strona główna - {{ parent() }}{% endblock %}
+{% extends 'base.html.twig' %}
 
 {% block content %}
-    <div class="p-5 mb-4 bg-white rounded-3 shadow-sm border">
-        <div class="container-fluid py-2">
-            <h1 class="display-5 fw-bold text-dark">{{ naglowek }}</h1>
-            <p class="col-md-8 fs-4 text-muted">Baza danych odpowiada, a Twig renderuje widoki. Jesteśmy w domu.</p>
+    <div class="container mt-4">
+        <h2 class="mb-4">Tablica ogłoszeń</h2>
+
+        {# Formularz tworzenia posta #}
+        <div class="card mb-4">
+            <div class="card-body">
+                <form action="/post/create" method="POST">
+                    <label for="post-content" class="form-label visually-hidden">Twoja myśl</label>
+                    <textarea id="post-content" name="content" class="form-control mb-2" rows="3" placeholder="Co Ci chodzi po głowie?" required></textarea>
+                    <button type="submit" class="btn btn-primary">Opublikuj</button>
+                </form>
+            </div>
         </div>
+
+        {# Pasek sortowania #}
+        <div class="d-flex gap-2 mb-3">
+            <a href="?sort=last_activity_at" class="btn btn-sm {% if current_sort == 'last_activity_at' or not current_sort %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                Najnowsza aktywność
+            </a>
+            <a href="?sort=created_at" class="btn btn-sm {% if current_sort == 'created_at' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                Najnowsze posty
+            </a>
+        </div>
+
+        {# Lista postów #}
+        {% for post in posts %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title text-muted small">@{{ post.username }}</h5>
+                    <p class="card-text">{{ post.content }}</p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ post.created_at|date('d.m.Y H:i') }}</small>
+
+                        <div class="d-flex gap-2">
+                            {% if post.user_id == user_id %}
+                                {# Mój post - nieaktywny #}
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                    👍 {{ post.likes_count }}
+                                </button>
+                            {% else %}
+                                {# Cudzy post - aktywne przełączanie stylów #}
+                                <form action="/post/like/{{ post.id }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {% if post.is_liked %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                        👍 {{ post.likes_count }}
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            {# Edycja (tylko dla autora) #}
+                            {% if user_id == post.user_id %}
+                                <a href="/post/edit/{{ post.id }}" class="btn btn-sm btn-outline-secondary">Edytuj</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Sekcja komentarzy #}
+                    {% if post.comments_count > 0 %}
+                        <div class="mt-3">
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="toggleComments({{ post.id }})">
+                                💬 {{ post.comments_count }} komentarzy (kliknij, by rozwinąć)
+                            </button>
+                            <div id="comments-{{ post.id }}" style="display:none;" class="mt-2 p-2 bg-light rounded border">
+                                <p class="small text-muted mb-0">Tu wczytamy komentarze przez AJAX w kolejnym kroku.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-info text-center">
+                Jeszcze nikt nic nie napisał. Bądź pierwszy!
+            </div>
+        {% endfor %}
     </div>
+
+    {# Skrypt do rozwijania #}
+    <script>
+        function toggleComments(id) {
+            var el = document.getElementById('comments-' + id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    </script>
 {% endblock %}

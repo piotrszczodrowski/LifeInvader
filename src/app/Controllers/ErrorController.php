@@ -2,14 +2,15 @@
 
 namespace App\Controllers;
 
-use App\Core\Controller;
-
-class ErrorController extends Controller
+class ErrorController extends BaseController
 {
-    public function show(int $code, string $message)
+    public function __construct()
     {
-        http_response_code($code);
+        parent::__construct();
+    }
 
+    public function show($code, $message)
+    {
         $this->render('error', [
             'code' => $code,
             'message' => $message
