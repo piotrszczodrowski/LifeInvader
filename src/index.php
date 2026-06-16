@@ -7,88 +7,90 @@ $dotenv->load();
 
 session_start();
 
-// parse URL
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-//check if already installed
+// 1. Check install
 $lockFilePath = __DIR__ . '/install.lock';
 $isInstalled = file_exists($lockFilePath);
 
-//if not installed trigger install
 if (!$isInstalled && $uri !== '/install' && $uri !== '/install/run') {
     header('Location: /install');
     exit;
 }
 
-//check must_change_password
-
+// 2. Check password change
 if (isset($_SESSION['must_change_password']) && $_SESSION['must_change_password'] == 1) {
-    // Pozwalamy wejść tylko na zmianę hasła LUB na wylogowanie
     if ($uri !== '/force-password-change' && $uri !== '/logout') {
         header('Location: /force-password-change');
-        exit; // Zatrzymujemy ruch - nie wpuszczamy do routera
+        exit;
     }
 }
 
-// simple MVP Router
+// 3. Routing (Static & Dynamic)
+
+// A. Trasy Statyczne (Switch)
+$handled = false;
+
 switch ($uri) {
     case '/':
     case '/index.php':
-        $homeController = new \App\Controllers\HomeController();
-        $homeController->index();
+        (new \App\Controllers\HomeController())->index();
+        $handled = true;
         break;
 
-    // install
     case '/install':
-        $installController = new \App\Controllers\InstallController();
-        $installController->index();
+        (new \App\Controllers\InstallController())->index();
+        $handled = true;
         break;
 
     case '/install/run':
-        $installController = new \App\Controllers\InstallController();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $installController->run();
+            (new \App\Controllers\InstallController())->run();
         } else {
             header('Location: /install');
         }
+        $handled = true;
         break;
 
-    // auth
     case '/login':
-        $authController = new \App\Controllers\AuthController();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $authController->login();
-        } else {
-            $authController->showLogin();
-        }
+        $auth = new \App\Controllers\AuthController();
+        ($_SERVER['REQUEST_METHOD'] === 'POST') ? $auth->login() : $auth->showLogin();
+        $handled = true;
         break;
 
     case '/register':
-        $authController = new \App\Controllers\AuthController();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $authController->register();
-        } else {
-            $authController->showRegister();
-        }
+        $auth = new \App\Controllers\AuthController();
+        ($_SERVER['REQUEST_METHOD'] === 'POST') ? $auth->register() : $auth->showRegister();
+        $handled = true;
         break;
 
     case '/logout':
-        $authController = new \App\Controllers\AuthController();
-        $authController->logout();
+        (new \App\Controllers\AuthController())->logout();
 
     case '/force-password-change':
-        $authController = new \App\Controllers\AuthController();
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $authController->forceChangePassword();
-        } else {
-            $authController->showForceChangePassword();
-        }
+        $auth = new \App\Controllers\AuthController();
+        ($_SERVER['REQUEST_METHOD'] === 'POST') ? $auth->forceChangePassword() : $auth->showForceChangePassword();
+        $handled = true;
         break;
 
-    // another routes go here
+    case '/post/create':
+        (new \App\Controllers\HomeController())->createPost();
+}
 
-    default:
-        $errorController = new \App\Controllers\ErrorController();
-        $errorController->show(404, "Niestety, strona której szukasz nie istnieje lub została przeniesiona.");
-        break;
+// B. Trasy Dynamiczne (Regex) - jeśli switch nic nie obsłużył
+if (!$handled) {
+    // Edit post: /post/edit/123
+    if (preg_match('/^\/post\/edit\/(\d+)$/', $uri, $matches)) {
+        (new \App\Controllers\HomeController())->editPost($matches[1]);
+        $handled = true;
+    }
+    // Like post: /post/like/123
+    elseif (preg_match('/^\/post\/like\/(\d+)$/', $uri, $matches)) {
+        (new \App\Controllers\HomeController())->toggleLike($matches[1]);
+    }
+}
+
+// 4. Default 404
+if (!$handled) {
+    (new \App\Controllers\ErrorController())->show(404, "Strona nie istnieje.");
 }

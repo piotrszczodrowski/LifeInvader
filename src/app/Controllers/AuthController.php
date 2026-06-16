@@ -2,11 +2,14 @@
 
 namespace App\Controllers;
 
-use App\Core\Controller;
 use App\Models\User;
 
-class AuthController extends Controller
+class AuthController extends BaseController
 {
+    public function __construct() {
+        parent::__construct();
+    }
+
     public function showLogin()
     {
         if (isset($_SESSION['user_id'])) {
@@ -69,7 +72,6 @@ class AuthController extends Controller
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
-
             $_SESSION['must_change_password'] = $user['must_change_password'];
 
             if ($_SESSION['must_change_password'] == 1) {
@@ -94,13 +96,11 @@ class AuthController extends Controller
 
     public function showForceChangePassword()
     {
-        // Bezpieczeństwo: Jeśli ktoś nie jest zalogowany, nie ma tu czego szukać
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
         }
 
-        // Wywołujemy uniwersalny szablon ze zdefiniowaną wiadomością dedykowaną dla wymuszenia
         $this->render('change_password', [
             'title' => 'Wymagana zmiana hasła',
             'message' => 'To Twoje pierwsze logowanie po instalacji systemu. Ze względów bezpieczeństwa musisz ustawić własne, bezpieczne hasło roota przed przejściem dalej.',
