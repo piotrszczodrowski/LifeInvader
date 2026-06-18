@@ -1,71 +1,227 @@
-{% extends "base.html.twig" %}
-{% block title %}Rejestracja - LifeInvader{% endblock %}
+{% extends 'base.html.twig' %}
+{% block title %}Zarejestruj się - LifeInvader{% endblock %}
+
 {% block content %}
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-5">
-            <div class="card shadow-sm border-0 rounded-4 p-4">
-                <h2 class="fw-bold mb-4 text-center">Dołącz do LifeInvader</h2>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-                {% if error %}
-                    <div class="alert alert-danger">{{ error }}</div>
-                {% endif %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-header bg-danger text-white border-0 rounded-top-4 py-3">
+                        <h5 class="mb-0 fw-bold">Dołącz do LifeInvader</h5>
+                    </div>
+                    <div class="card-body p-4">
 
-                <form action="/register" method="POST">
-                    <div class="mb-3">
-                        <label for="register-username" class="form-label">Nazwa użytkownika</label>
-                        <input type="text" id="register-username" name="username" class="form-control" required>
+                        {# Formularz z atrybutem novalidate (wyłącza domyślne dymki przeglądarki) #}
+                        <form action="/register" method="POST" id="registerForm" novalidate>
+
+                            {# LOGIN #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Nazwa użytkownika</label>
+                                <input type="text" name="username" class="form-control {% if errors.username %}is-invalid{% endif %}" value="{{ old.username|default('') }}" required>
+                                {% if errors.username %}<div class="invalid-feedback">{{ errors.username }}</div>{% endif %}
+                            </div>
+
+                            {# E-MAIL #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Adres e-mail</label>
+                                <input type="email" name="email" id="regEmail" class="form-control {% if errors.email %}is-invalid{% endif %}" value="{{ old.email|default('') }}" required>
+                                {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
+                            </div>
+
+                            {# POTWIERDŹ E-MAIL (Z dynamiczną walidacją JS) #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Potwierdź e-mail</label>
+                                <input type="email" name="email_confirm" id="regEmailConfirm" class="form-control {% if errors.email_confirm %}is-invalid{% endif %}" value="{{ old.email_confirm|default('') }}" required>
+                                <div class="invalid-feedback" id="emailMatchError">{% if errors.email_confirm %}{{ errors.email_confirm }}{% else %}Podane adresy e-mail nie są identyczne.{% endif %}</div>
+                            </div>
+
+                            {# HASŁO #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Hasło</label>
+                                <div class="input-group has-validation">
+                                    <input type="password" name="password" id="regPassword" class="form-control {% if errors.password %}is-invalid{% endif %}" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="bi bi-eye-slash"></i>
+                                    </button>
+                                    {% if errors.password %}<div class="invalid-feedback">{{ errors.password }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            {# POTWIERDŹ HASŁO #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Potwierdź hasło</label>
+                                <div class="input-group has-validation">
+                                    <input type="password" name="password_confirm" id="regPasswordConfirm" class="form-control {% if errors.password_confirm %}is-invalid{% endif %}" required>
+                                    <button class="btn btn-outline-secondary toggle-password" type="button">
+                                        <i class="bi bi-eye-slash"></i>
+                                    </button>
+                                    {# DODANY DIV NA BŁĄD Z JS #}
+                                    <div class="invalid-feedback" id="passwordMatchError" style="display: none;">Podane hasła nie są identyczne.</div>
+                                    {% if errors.password_confirm %}<div class="invalid-feedback">{{ errors.password_confirm }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            {# DATA URODZENIA #}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Data urodzenia</label>
+                                <input type="date" name="birth_date" class="form-control {% if errors.birth_date %}is-invalid{% endif %}" value="{{ old.birth_date|default('') }}" required>
+                                {% if errors.birth_date %}<div class="invalid-feedback">{{ errors.birth_date }}</div>{% endif %}
+                            </div>
+
+                            {# OCENA PROJEKTU (DROPDOWN) #}
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Jak oceniasz niniejszy projekt?</label>
+                                <select name="evaluation" class="form-select {% if errors.evaluation %}is-invalid{% endif %}" required>
+                                    <option value="" disabled {% if not old.evaluation %}selected{% endif %}>Wybierz ocenę...</option>
+                                    <option value="Na 5-tkę!" {% if old.evaluation == 'Na 5-tkę!' %}selected{% endif %}>Na 5-tkę!</option>
+                                    <option value="Nie mam uwag" {% if old.evaluation == 'Nie mam uwag' %}selected{% endif %}>Nie mam uwag</option>
+                                    <option value="100/100p" {% if old.evaluation == '100/100p' %}selected{% endif %}>100/100p</option>
+                                </select>
+                                {% if errors.evaluation %}<div class="invalid-feedback">{{ errors.evaluation }}</div>{% endif %}
+                            </div>
+
+                            {# WIDGET CLOUDFLARE TURNSTILE #}
+                            <div class="mb-3 d-flex justify-content-center">
+                                {# Używamy zmiennej cf_site_key z kontrolera #}
+                                <div class="cf-turnstile {% if errors.captcha %}border border-danger p-2 rounded{% endif %}"
+                                     data-sitekey="{{ cf_site_key }}"
+                                     data-theme="{{ session.theme_preference|default('auto') }}">
+                                </div>
+                            </div>
+                            {% if errors.captcha %}<div class="text-danger small text-center mb-3">{{ errors.captcha }}</div>{% endif %}
+
+                            {# REGULAMIN #}
+                            <div class="card p-3 bg-body-tertiary border-secondary-subtle mb-4">
+                                <p class="small text-body-secondary mb-2">Aby móc założyć konto, musisz najpierw zapoznać się z regulaminem platformy.</p>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill mb-3" data-bs-toggle="modal" data-bs-target="#tosModal">
+                                    <i class="bi bi-file-earmark-text-fill me-1"></i> Otwórz i przeczytaj regulamin
+                                </button>
+
+                                <div class="form-check">
+                                    <input class="form-check-input {% if errors.tos %}is-invalid{% endif %}" type="checkbox" name="tos" id="tosCheck" disabled required>
+                                    <label class="form-check-label small fw-bold" for="tosCheck">
+                                        Oświadczam, że przeczytałem i akceptuję regulamin.
+                                    </label>
+                                    {% if errors.tos %}<div class="invalid-feedback">{{ errors.tos }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger w-100 fw-bold rounded-pill py-2">Zarejestruj się</button>
+
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label for="register-email" class="form-label">Adres e-mail</label>
-                        <input type="email" id="register-email" name="email" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="register-password" class="form-label">Hasło</label>
-                        <div class="input-group">
-                            <input type="password" id="register-password" name="password" class="form-control toggle-target" required>
-                            <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="register-password-confirm" class="form-label">Powtórz hasło</label>
-                        <div class="input-group">
-                            <input type="password" id="register-password-confirm" name="password_confirm" class="form-control toggle-target" required>
-                            <button class="btn btn-outline-secondary toggle-password" type="button" tabindex="-1">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill">Zarejestruj się</button>
-                </form>
-                <div class="text-center mt-3">
-                    <span class="text-muted">Masz już konto?</span> <a href="/login" class="text-decoration-none">Zaloguj się</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- MODAL REGULAMINU --- #}
+    <div class="modal fade" id="tosModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-fill-check text-warning me-2"></i>Regulamin LifeInvader</h5>
+                </div>
+                <div class="modal-body fs-6">
+                    <h6 class="fw-bold">§1 Postanowienia ogólne</h6>
+                    <p>Niniejsza platforma służy celom edukacyjnym i rozrywkowym. Użytkownik zobowiązuje się do nieingerowania w strukturę kodu bez zgody Administratora.</p>
+                    <h6 class="fw-bold">§2 Publikacja treści</h6>
+                    <p>Wrzucanie śmiesznych memów oraz testowanie edytorów WYSIWYG jest w pełni dozwolone, a wręcz wskazane. Wszelkie wulgaryzmy i próby ataków XSS będą ścigane z urzędu przez skrypty sprawdzające.</p>
+                    <h6 class="fw-bold">§3 Odpowiedzialność</h6>
+                    <p>Projekt realizowany na zaliczenie przedmiotu. Autor nie ponosi odpowiedzialności za utratę danych testowych w wyniku masowego czyszczenia bazy danych (DROP DATABASE).</p>
+                </div>
+                <div class="modal-footer border-0 bg-body-tertiary">
+                    <button type="button" id="acceptToSBtn" class="btn btn-success rounded-pill fw-bold px-4">Przeczytałem i akceptuję</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.querySelectorAll('.toggle-password').forEach(button => {
-            button.addEventListener('click', function() {
-                 const passwordInputs = document.querySelectorAll('.toggle-target');
-                const icons = document.querySelectorAll('.toggle-password i');
+        document.addEventListener('DOMContentLoaded', function() {
 
-                const isPassword = passwordInputs[0].type === 'password';
+            // 1. Sprzężone maskowanie i odmaskowywanie haseł
+            const passwordInput = document.getElementById('regPassword');
+            const confirmPasswordInput = document.getElementById('regPasswordConfirm');
+            const toggleButtons = document.querySelectorAll('.toggle-password');
 
-                passwordInputs.forEach(input => {
-                    input.type = isPassword ? 'text' : 'password';
+            if (passwordInput && confirmPasswordInput) {
+                toggleButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const isPassword = passwordInput.type === 'password';
+                        const newType = isPassword ? 'text' : 'password';
+
+                        passwordInput.type = newType;
+                        confirmPasswordInput.type = newType;
+
+                        toggleButtons.forEach(btn => {
+                            const icon = btn.querySelector('i');
+                            if (icon) {
+                                icon.className = isPassword ? 'bi bi-eye' : 'bi bi-eye-slash';
+                            }
+                        });
+                    });
                 });
+            }
 
-                icons.forEach(icon => {
-                    if (isPassword) {
-                        icon.classList.replace('bi-eye', 'bi-eye-slash');
-                    } else {
-                        icon.classList.replace('bi-eye-slash', 'bi-eye');
+            // 2. Dynamiczna weryfikacja zgodności haseł
+            const passwordMatchError = document.getElementById('passwordMatchError');
+
+            function checkPasswordsMatch() {
+                if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
+                    confirmPasswordInput.classList.add('is-invalid');
+                    if (passwordMatchError) passwordMatchError.style.display = 'block';
+                } else {
+                    confirmPasswordInput.classList.remove('is-invalid');
+                    if (passwordMatchError) passwordMatchError.style.display = 'none';
+                }
+            }
+
+            if (passwordInput && confirmPasswordInput) {
+                passwordInput.addEventListener('input', checkPasswordsMatch);
+                confirmPasswordInput.addEventListener('input', checkPasswordsMatch);
+            }
+
+            // 3. Dynamiczna weryfikacja zgodności e-maili
+            const emailInput = document.getElementById('regEmail');
+            const emailConfirmInput = document.getElementById('regEmailConfirm');
+
+            function checkEmailsMatch() {
+                if (emailConfirmInput.value.length > 0 && emailInput.value !== emailConfirmInput.value) {
+                    emailConfirmInput.classList.add('is-invalid');
+                } else {
+                    emailConfirmInput.classList.remove('is-invalid');
+                }
+            }
+
+            if (emailInput && emailConfirmInput) {
+                emailInput.addEventListener('input', checkEmailsMatch);
+                emailConfirmInput.addEventListener('input', checkEmailsMatch);
+            }
+
+            // 4. Obsługa przycisku w Modalu z regulaminem
+            const acceptBtn = document.getElementById('acceptToSBtn');
+            if (acceptBtn) {
+                acceptBtn.addEventListener('click', function() {
+                    const checkbox = document.getElementById('tosCheck');
+
+                    if (checkbox) {
+                        checkbox.removeAttribute('disabled');
+                        checkbox.checked = true;
+                        checkbox.classList.remove('is-invalid');
+                    }
+
+                    const modalEl = document.getElementById('tosModal');
+                    if (modalEl) {
+                        // Używamy getOrCreateInstance, żeby uniknąć błędu null
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.hide();
                     }
                 });
-            });
+            }
+
         });
     </script>
 {% endblock %}

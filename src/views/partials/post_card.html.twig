@@ -1,0 +1,128 @@
+<div class="card mb-4 shadow-sm border-0 rounded-4">
+    <div class="card-body">
+
+        {# 1. Nagłówek posta #}
+        <div class="d-flex align-items-center mb-3">
+            <img src="{{ post.avatar_path|default('/uploads/avatars/default.png') }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+            <div>
+                <h6 class="mb-0 fw-bold">
+                    <a href="/profile/{{ post.username }}" class="text-decoration-none text-body">@{{ post.username }}</a>
+                </h6>
+                <small class="text-muted">{{ post.created_at|date('d.m.Y H:i') }}</small>
+            </div>
+        </div>
+
+        {# 2. Treść posta #}
+        <div class="card-text mb-3">
+            {{ post.content|raw }}
+        </div>
+
+        {# 3. Galeria zdjęć (jeśli są) #}
+        {% if post.images|length > 0 %}
+            <div class="row g-2 mb-3">
+                {% for img in post.images %}
+                    <div class="col-6 col-md-4 overflow-hidden rounded">
+                        <a data-fslightbox="gallery-{{ post.id }}" href="{{ img }}">
+                            <img src="{{ img }}" class="img-fluid shadow-sm" alt="Zdjęcie do posta"
+                                 style="object-fit: cover; width: 100%; height: 200px; cursor: zoom-in; transition: transform 0.3s;"
+                                 onmouseover="this.style.transform='scale(1.05)'"
+                                 onmouseout="this.style.transform='scale(1)'">
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {# 4. Pasek akcji (Lajki, komentarze, edycja, usuwanie) #}
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+
+            {# Lewa strona: Lajki i Dymek #}
+            <div class="d-flex gap-2">
+                {% if post.user_id == session.user_id %}
+                    <button class="btn btn-sm btn-outline-secondary" disabled>👍 {{ post.likes_count }}</button>
+                {% else %}
+                    <form action="/post/like/{{ post.id }}" method="POST" class="d-inline m-0">
+                        <button type="submit" class="btn btn-sm {% if post.is_liked %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                            👍 {{ post.likes_count }}
+                        </button>
+                    </form>
+                {% endif %}
+
+                {# Przycisk rozwijający komentarze #}
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#commentsCollapse{{ post.id }}" aria-expanded="false">
+                    💬 {{ post.comments_count }}
+                </button>
+            </div>
+
+            {# Prawa strona: Opcje właściciela / Podpierdalajka #}
+            <div class="d-flex gap-2">
+                {% if post.user_id == session.user_id %}
+                    <a href="/post/edit/{{ post.id }}" class="btn btn-sm btn-outline-primary" title="Edytuj post">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+
+                    <button type="button" class="btn btn-sm btn-outline-danger" title="Usuń post" data-bs-toggle="modal" data-bs-target="#deleteModal{{ post.id }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                {% else %}
+                    {# Puste miejsce na flagę/zgłoszenie w przyszłości #}
+                {% endif %}
+            </div>
+
+        </div> {# KONIEC PASKA AKCJI - TEN ZAMYKAJĄCY DIV JEST KRYTYCZNY #}
+
+        {# 5. Modal Usuwania (ukryty) #}
+        {% if post.user_id == session.user_id %}
+            <div class="modal fade" id="deleteModal{{ post.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ post.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-danger text-white border-0">
+                            <h5 class="modal-title fw-bold" id="deleteModalLabel{{ post.id }}">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i> Usuwanie wpisu
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+                        </div>
+                        <div class="modal-body text-start">
+                            Czy na pewno chcesz usunąć ten wpis? Tej operacji <strong>nie można cofnąć</strong>.
+                        </div>
+                        <div class="modal-footer border-0 bg-body-tertiary">
+                            <button type="button" class="btn btn-secondary rounded-pill fw-bold" data-bs-dismiss="modal">Anuluj</button>
+                            <form action="/post/delete/{{ post.id }}" method="POST" class="m-0">
+                                <button type="submit" class="btn btn-danger rounded-pill fw-bold">Tak, usuń post</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {# 6. Sekcja Komentarzy (Rozwijana) - TERAZ JEST POD PASKIEM AKCJI #}
+        <div class="collapse mt-3" id="commentsCollapse{{ post.id }}">
+            <hr class="text-secondary opacity-25 mt-0 mb-3">
+
+            <div class="mb-3">
+                {% for comment in post.comments_list %}
+                    <div class="d-flex mb-2">
+                        <img src="{{ comment.avatar_path|default('/uploads/avatars/default.png') }}" class="rounded-circle me-2 mt-1 shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
+                        <div class="bg-body-tertiary px-3 py-2 rounded-4 w-100 shadow-sm border border-secondary-subtle">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <a href="/profile/{{ comment.username }}" class="text-decoration-none fw-bold text-body" style="font-size: 0.9rem;">@{{ comment.username }}</a>
+                                <small class="text-muted" style="font-size: 0.75rem;">{{ comment.created_at|date('d.m.Y H:i') }}</small>
+                            </div>
+                            <p class="mb-0 text-break" style="font-size: 0.9rem;">{{ comment.content|raw }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <form action="/post/comment/{{ post.id }}" method="POST" class="d-flex align-items-center mt-2">
+                <img src="{{ session.avatar_path|default('/uploads/avatars/default.png') }}" class="rounded-circle me-2 shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
+                <div class="input-group shadow-sm rounded-pill">
+                    <input type="text" name="content" class="form-control rounded-start-pill bg-body-tertiary border-secondary-subtle px-3" placeholder="Napisz komentarz..." required maxlength="255">
+                    <button type="submit" class="btn btn-primary rounded-end-pill fw-bold px-4">Wyślij</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>

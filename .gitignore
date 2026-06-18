@@ -15,3 +15,12 @@
 
 # system files
 .DS_Store
+
+# ignore all uploaded avatars
+uploads/avatars/*
+# but save default
+!uploads/avatars/default.png
+
+# ignore uploaded pics, but track dir
+uploads/posts/*
+!uploads/posts/.gitkeep

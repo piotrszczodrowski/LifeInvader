@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Core\Controller;
 
 class AuthController extends BaseController
 {
@@ -21,40 +22,116 @@ class AuthController extends BaseController
 
     public function showRegister()
     {
-        if (isset($_SESSION['user_id'])) {
-            header('Location: /');
-            exit;
-        }
-        $this->render('register');
+        $errors = $_SESSION['errors'] ?? [];
+        $old = $_SESSION['old'] ?? [];
+
+        unset($_SESSION['errors'], $_SESSION['old']);
+
+        // Pobieramy SITE_KEY z .env, żeby przekazać do front-endu
+        $cfSiteKey = $_ENV['CLOUDFLARE_SITE_KEY'] ?? '';
+
+        $this->render('register', [
+            'errors' => $errors,
+            'old' => $old,
+            'cf_site_key' => $cfSiteKey // Wrzucamy to do Twiga
+        ]);
     }
 
     public function register()
     {
-        $username = trim($_POST['username'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $passwordConfirm = $_POST['password_confirm'] ?? '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $username = trim($_POST['username'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $emailConfirm = trim($_POST['email_confirm'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $passwordConfirm = $_POST['password_confirm'] ?? '';
+            $birthDate = $_POST['birth_date'] ?? '';
+            $evaluation = $_POST['evaluation'] ?? '';
+            $tos = isset($_POST['tos']);
 
-        if (empty($username) || empty($email) || empty($password) || empty($passwordConfirm)) {
-            $this->render('register', ['error' => 'Wypełnij wszystkie pola!']);
-            return;
-        }
+            // Pobranie tokenu Cloudflare Turnstile
+            $turnstileResponse = $_POST['cf-turnstile-response'] ?? '';
 
-        if ($password !== $passwordConfirm) {
-            $this->render('register', ['error' => 'Podane hasła nie są identyczne. Spróbuj ponownie.']);
-            return;
-        }
+            $errors = [];
 
-        $userModel = new User();
-        try {
-            $userModel->create($username, $email, $password);
-            $this->render('login', ['success' => 'Konto utworzone! Możesz się zalogować.']);
-        } catch (\PDOException $e) {
-            if ($e->getCode() == 23000) {
-                $this->render('register', ['error' => 'Użytkownik o tym mailu lub nazwie już istnieje.']);
+            // --- WALIDACJA CLOUDFLARE TURNSTILE ---
+            if (empty($turnstileResponse)) {
+                $errors['captcha'] = "Potwierdź, że jesteś człowiekiem.";
             } else {
-                $this->render('register', ['error' => 'Błąd bazy danych: ' . $e->getMessage()]);
+                // Czytamy sekret z pliku .env!
+                $secretKey = $_ENV['CLOUDFLARE_SECRET_KEY'] ?? '';
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, "https://challenges.cloudflare.com/turnstile/v0/siteverify");
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                    'secret' => $secretKey,
+                    'response' => $turnstileResponse
+                ]));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $response = json_decode(curl_exec($ch), true);
+                curl_close($ch);
+
+                if (!$response['success']) {
+                    $errors['captcha'] = "Weryfikacja anty-botowa nie powiodła się. Spróbuj ponownie.";
+                }
             }
+
+            // --- WALIDACJA DANYCH WEJŚCIOWYCH ---
+            if (strlen($username) < 3) {
+                $errors['username'] = "Login musi mieć co najmniej 3 znaki.";
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors['email'] = "Niepoprawny format adresu e-mail.";
+            }
+            if ($email !== $emailConfirm) {
+                $errors['email_confirm'] = "Podane adresy e-mail nie są identyczne.";
+            }
+            if (strlen($password) < 6) {
+                $errors['password'] = "Hasło musi mieć minimum 6 znaków.";
+            }
+            if ($password !== $passwordConfirm) {
+                $errors['password_confirm'] = "Podane hasła się nie zgadzają.";
+            }
+            if (empty($birthDate)) {
+                $errors['birth_date'] = "Musisz podać datę urodzenia.";
+            }
+            if (!in_array($evaluation, ["Na 5-tkę!", "Nie mam uwag", "100/100p"])) {
+                $errors['evaluation'] = "Proszę wybrać poprawną ocenę projektu.";
+            }
+            if (!$tos) {
+                $errors['tos'] = "Musisz zapoznać się z regulaminem.";
+            }
+
+            // Sprawdzanie duplikatów
+            $userModel = new \App\Models\User();
+            if (empty($errors)) {
+                if ($userModel->findByUsername($username)) {
+                    $errors['username'] = "Taki użytkownik już istnieje.";
+                }
+                if ($userModel->findByEmail($email)) {
+                    $errors['email'] = "Ten adres e-mail jest już zajęty.";
+                }
+            }
+
+            // Przekierowanie w przypadku błędów
+            if (!empty($errors)) {
+                $_SESSION['errors'] = $errors;
+                $_SESSION['old'] = [
+                    'username' => $username,
+                    'email' => $email,
+                    'email_confirm' => $emailConfirm,
+                    'birth_date' => $birthDate,
+                    'evaluation' => $evaluation
+                ];
+                header('Location: /register');
+                exit;
+            }
+
+            // Zapis użytkownika
+            $currentTheme = $_SESSION['theme_preference'] ?? 'light';
+            $userModel->create($username, $email, $password, $birthDate, $currentTheme);
+            header('Location: /login');
+            exit;
         }
     }
 
@@ -72,7 +149,9 @@ class AuthController extends BaseController
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
+            $_SESSION['theme_preference'] = $user['theme_preference'] ?? 'light';
             $_SESSION['must_change_password'] = $user['must_change_password'];
+            $_SESSION['avatar_path'] = $user['avatar_path'] ?? '/uploads/avatars/default.png';
 
             if ($_SESSION['must_change_password'] == 1) {
                 header('Location: /force-password-change');

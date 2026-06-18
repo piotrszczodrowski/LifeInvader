@@ -1,0 +1,60 @@
+{% extends "base.html.twig" %}
+{% block title %}Edycja Profilu - LifeInvader{% endblock %}
+
+{% block content %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 card p-4 shadow-sm border-0 rounded-4">
+                <h3 class="fw-bold mb-4 text-center">Ustawienia profilu</h3>
+
+                {% if app.request.get('success') %}
+                    <div class="alert alert-success">Profil został zaktualizowany!</div>
+                {% endif %}
+
+                <form action="/profile/update" method="POST" enctype="multipart/form-data">
+
+                    {# Prezentacja obecnego awatara #}
+                    <div class="text-center mb-4">
+                        <img src="{{ user.avatar_path }}" alt="Awatar użytkownika"
+                             class="rounded-circle img-thumbnail shadow-sm"
+                             style="width: 150px; height: 150px; object-fit: cover;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small text-uppercase fw-bold">Login</label>
+                        <input type="text" class="form-control" value="{{ user.username }}" disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small text-uppercase fw-bold">Email</label>
+                        <input type="text" class="form-control" value="{{ user.email }}" disabled>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="avatar" class="form-label fw-bold">Zmień awatar (JPG, PNG, WEBP)</label>
+                        <input class="form-control" type="file" id="avatar" name="avatar" accept="image/jpeg, image/png, image/webp">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="bio" class="form-label fw-bold">O mnie (Bio)</label>
+                        <textarea name="bio" id="bio" class="form-control" rows="4" maxlength="255" placeholder="Napisz coś o sobie...">{{ user.bio }}</textarea>
+                        <div class="form-text text-end" id="bio-counter">Maksymalnie 255 znaków</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill">Zapisz zmiany</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Prosty skrypt do odliczania znaków w locie
+        const bioTextarea = document.getElementById('bio');
+        const bioCounter = document.getElementById('bio-counter');
+
+        bioTextarea.addEventListener('input', function() {
+            const remaining = 255 - this.value.length;
+            bioCounter.textContent = `Pozostało ${remaining} znaków`;
+        });
+    </script>
+{% endblock %}
