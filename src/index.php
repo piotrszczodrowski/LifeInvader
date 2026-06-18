@@ -29,7 +29,7 @@ if (!file_exists($lockFilePath) && !in_array($uri, ['/install', '/install/run'])
 }
 
 // Sprawdzenie, czy użytkownik jest zalogowany
-$allowedRoutes = ['/login', '/register', '/toggle-theme'];
+$allowedRoutes = ['/login', '/register', '/toggle-theme', '/install', '/install/run'];
 if (!isset($_SESSION['user_id']) && !in_array($uri, $allowedRoutes)) {
     if ($uri === '/' || $uri === '/index.php') {
         (new \App\Controllers\AuthController())->showLogin();
