@@ -23,13 +23,13 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // Sprawdzenie, czy system jest zainstalowany
 $lockFilePath = __DIR__ . '/install.lock';
-if (!file_exists($lockFilePath) && $uri !== '/install' && $uri !== '/install/run') {
+if (!file_exists($lockFilePath) && !in_array($uri, ['/install', '/install/run'])) {
     header('Location: /install');
     exit;
 }
 
 // Sprawdzenie, czy użytkownik jest zalogowany
-$allowedRoutes = ['/login', '/register'];
+$allowedRoutes = ['/login', '/register', '/toggle-theme'];
 if (!isset($_SESSION['user_id']) && !in_array($uri, $allowedRoutes)) {
     if ($uri === '/' || $uri === '/index.php') {
         (new \App\Controllers\AuthController())->showLogin();

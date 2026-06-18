@@ -166,7 +166,7 @@ class AuthController extends Controller
      * Przetwarza wymuszoną zmianę hasła.
      */
     public function forceChangePassword()
-    {.
+    {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;

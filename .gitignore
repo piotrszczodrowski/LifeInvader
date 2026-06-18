@@ -24,3 +24,6 @@ uploads/avatars/*
 # ignore uploaded pics, but track dir
 uploads/posts/*
 !uploads/posts/.gitkeep
+
+#database migration files
+src/database/migrations
