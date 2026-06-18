@@ -30,8 +30,9 @@ cp .env.example .env
 Otwórz plik `.env` i uzupełnij go swoimi danymi. Poniżej opis najważniejszych zmiennych:
 
 *   **Porty aplikacji:**
-    *   `APP_PORT`: Port, na którym będzie dostępna aplikacja (domyślnie `2137`).
-    *   `PHPMYADMIN_PORT`: Port dla narzędzia PhpMyAdmin (domyślnie `2138`).
+    *   `APP_PORT`: Port, na którym będzie dostępna aplikacja (domyślnie `80`).
+    *   `PHPMYADMIN_PORT`: Port dla narzędzia PhpMyAdmin (domyślnie `8080`).
+    *   `DB_EXTERNAL_PORT`: Port do bezpośredniego połączenia z bazą danych (domyślnie `3306`).
 
 *   **Klucze Cloudflare Turnstile:**
     Formularz rejestracji wymaga kluczy API dla usługi Cloudflare Turnstile. Aby je uzyskać, załóż darmowe konto Cloudflare, dodaj nową witrynę w sekcji Turnstile, a w polu **Domain** wpisz wszystkie nazwy hostów, pod którymi aplikacja będzie dostępna (np. `localhost`, `192.168.1.10`, `twoja-domena.com`).
@@ -67,20 +68,20 @@ docker compose up -d
 
 ## 🌐 Dostęp do aplikacji i usług
 
-Po uruchomieniu kontenerów, poszczególne usługi będą dostępne pod następującymi adresami (zgodnie z domyślną konfiguracją w `.env`):
+Po uruchomieniu kontenerów, poszczególne usługi będą dostępne pod następującymi adresami (przy domyślnej konfiguracji portów):
 
 *   **Aplikacja LifeInvader:**
-    *   Adres: `http://localhost:2137`
+    *   Adres: `http://localhost`
 
 *   **PhpMyAdmin (zarządzanie bazą danych przez przeglądarkę):**
-    *   Adres: `http://localhost:2138`
+    *   Adres: `http://localhost:8080`
     *   Serwer: `db`
     *   Użytkownik: `root`
     *   Hasło: wartość `DB_ROOT_PASSWORD` z pliku `.env`
 
 *   **Bezpośredni dostęp do bazy danych (np. z klienta SQL):**
-    *   Host: `127.0.0.1`
-    *   Port: `3307`
+    *   Host: `localhost`
+    *   Port: `3306`
     *   Użytkownik: wartość `DB_USER` z pliku `.env`
     *   Hasło: wartość `DB_PASSWORD` z pliku `.env`
     *   Baza danych: wartość `DB_NAME` z pliku `.env`
