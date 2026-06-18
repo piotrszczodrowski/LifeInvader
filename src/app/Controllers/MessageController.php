@@ -6,21 +6,20 @@ use App\Models\Message;
 use App\Models\User;
 use App\Core\Controller;
 
-
 class MessageController extends Controller
 {
-    // Czat jest dostępny tylko dla zalogowanych!
     public function __construct()
     {
         parent::__construct();
-
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
         }
     }
 
-    // Główny widok skrzynki (na razie zwracamy tylko pusty widok z listą kontaktów)
+    /**
+     * Wyświetla główny widok wiadomości, listę kontaktów i aktywną konwersację.
+     */
     public function index()
     {
         $messageModel = new Message();
@@ -28,7 +27,6 @@ class MessageController extends Controller
 
         $contacts = $messageModel->getInbox($_SESSION['user_id']);
         $allUsers = $userModel->getAllExcept($_SESSION['user_id']);
-
         $activeContact = null;
         $conversation = [];
 
@@ -36,7 +34,6 @@ class MessageController extends Controller
         if ($activeContactId) {
             $activeContact = $userModel->findById((int)$activeContactId);
             if ($activeContact) {
-                // KIEDY WCHODZĘ W CZAT: Oznacz jako przeczytane
                 $messageModel->markAsRead($_SESSION['user_id'], $activeContact['id']);
                 $conversation = $messageModel->getConversation($_SESSION['user_id'], $activeContact['id']);
             }
@@ -50,8 +47,9 @@ class MessageController extends Controller
         ]);
     }
 
-    // --- WYMÓG AKADEMICKI: ENDPOINT ZWRACAJĄCY JSON ---
-    // Służy wyłącznie do komunikacji z JavaScriptem (AJAX)
+    /**
+     * Endpoint API (JSON) do pobierania nowych wiadomości w czasie rzeczywistym.
+     */
     public function fetchNew()
     {
         header('Content-Type: application/json');
@@ -65,34 +63,29 @@ class MessageController extends Controller
 
         $messageModel = new Message();
         $messageModel->markAsRead($_SESSION['user_id'], (int)$interlocutorId);
-
         $rawMessages = $messageModel->getNewMessages($_SESSION['user_id'], (int)$interlocutorId, (int)$lastMessageId);
 
-        $cleanMessages = [];
-        foreach ($rawMessages as $msg) {
-            $msg['content'] = htmlspecialchars($msg['content']);
-            $cleanMessages[] = $msg;
-        }
-
-        // NOWE: Pobieramy ID ostatniej przeczytanej wiadomości
+        $cleanMessages = array_map(fn($msg) => ['content' => htmlspecialchars($msg['content'])], $rawMessages);
         $maxReadId = $messageModel->getMaxReadId($_SESSION['user_id'], (int)$interlocutorId);
 
-        // Zwracamy to do JavaScriptu
         echo json_encode([
             'status' => 'success',
             'messages' => $cleanMessages,
             'current_user_id' => $_SESSION['user_id'],
-            'max_read_id' => $maxReadId // <--- DODANE
+            'max_read_id' => $maxReadId
         ]);
         exit;
     }
 
+    /**
+     * Endpoint API (JSON) do wysyłania nowej wiadomości.
+     */
     public function send()
     {
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['status' => 'error', 'message' => 'Zły protokół zapytań']);
+            echo json_encode(['status' => 'error', 'message' => 'Zły protokół']);
             exit;
         }
 
@@ -100,7 +93,7 @@ class MessageController extends Controller
         $content = trim($_POST['content'] ?? '');
 
         if (!$receiverId || empty($content)) {
-            echo json_encode(['status' => 'error', 'message' => 'Treść wiadomości nie może być pusta']);
+            echo json_encode(['status' => 'error', 'message' => 'Treść nie może być pusta']);
             exit;
         }
 
@@ -112,14 +105,13 @@ class MessageController extends Controller
         $messageModel = new Message();
         $success = $messageModel->send($_SESSION['user_id'], $receiverId, $content);
 
-        if ($success) {
-            echo json_encode(['status' => 'success']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Błąd zapisu w bazie danych']);
-        }
+        echo json_encode(['status' => $success ? 'success' : 'error']);
         exit;
     }
 
+    /**
+     * Endpoint API (JSON) do pobierania liczników nieprzeczytanych wiadomości.
+     */
     public function getCounters()
     {
         header('Content-Type: application/json');
@@ -133,13 +125,7 @@ class MessageController extends Controller
         $globalUnread = $messageModel->getGlobalUnreadCount($_SESSION['user_id']);
         $inbox = $messageModel->getInbox($_SESSION['user_id']);
 
-        $threads = [];
-        foreach ($inbox as $c) {
-            $threads[] = [
-                'user_id' => (int)$c['id'],
-                'unread_count' => (int)$c['unread_count']
-            ];
-        }
+        $threads = array_map(fn($c) => ['user_id' => (int)$c['id'], 'unread_count' => (int)$c['unread_count']], $inbox);
 
         echo json_encode([
             'status' => 'success',

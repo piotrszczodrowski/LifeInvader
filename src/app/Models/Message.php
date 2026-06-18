@@ -14,14 +14,15 @@ class Message
         $this->db = Database::getConnection();
     }
 
-    // Zapisuje nową wiadomość
     public function send(int $senderId, int $receiverId, string $content): bool
     {
         $stmt = $this->db->prepare("INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)");
         return $stmt->execute([$senderId, $receiverId, $content]);
     }
 
-    // Pobiera listę użytkowników, z którymi kiedykolwiek pisaliśmy (do lewego paska "Skrzynki")
+    /**
+     * Pobiera listę konwersacji (skrzynkę odbiorczą) dla danego użytkownika.
+     */
     public function getInbox(int $userId): array
     {
         $stmt = $this->db->prepare("
@@ -37,13 +38,14 @@ class Message
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Pobiera całą historię rozmowy przy pierwszym załadowaniu strony
+    /**
+     * Pobiera pełną historię rozmowy między dwoma użytkownikami.
+     */
     public function getConversation(int $user1, int $user2): array
     {
         $stmt = $this->db->prepare("
             SELECT m.*, u.username, u.avatar_path
-            FROM messages m
-            JOIN users u ON m.sender_id = u.id
+            FROM messages m JOIN users u ON m.sender_id = u.id
             WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
             ORDER BY m.created_at ASC
         ");
@@ -51,13 +53,14 @@ class Message
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // SERCE AJAXA: Pobiera tylko te wiadomości, których ID jest większe od ostatnio wyświetlonego
+    /**
+     * Pobiera nowe wiadomości w konwersacji, nowsze niż podane ID.
+     */
     public function getNewMessages(int $user1, int $user2, int $lastMessageId): array
     {
         $stmt = $this->db->prepare("
             SELECT m.*, u.username, u.avatar_path
-            FROM messages m
-            JOIN users u ON m.sender_id = u.id
+            FROM messages m JOIN users u ON m.sender_id = u.id
             WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?))
             AND m.id > ?
             ORDER BY m.created_at ASC
@@ -68,11 +71,7 @@ class Message
 
     public function markAsRead(int $receiverId, int $senderId): bool
     {
-        $stmt = $this->db->prepare("
-            UPDATE messages 
-            SET is_read = 1 
-            WHERE receiver_id = ? AND sender_id = ? AND is_read = 0
-        ");
+        $stmt = $this->db->prepare("UPDATE messages SET is_read = 1 WHERE receiver_id = ? AND sender_id = ? AND is_read = 0");
         return $stmt->execute([$receiverId, $senderId]);
     }
 

@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        /* Styl dla linku wylogowania, żeby ładnie reagował na najechanie */
         .logout-link {
             color: rgba(255, 255, 255, 0.75);
             transition: color 0.2s;
@@ -15,17 +14,12 @@
         .logout-link:hover {
             color: #fff !important;
         }
-        /* Twoje dotychczasowe style dla wylogowania */
-        .logout-link { color: rgba(255, 255, 255, 0.75); transition: color 0.2s; }
-        .logout-link:hover { color: #fff !important; }
-
-        /* NOWE: Poprawki czytelności tylko dla Dark Mode */
         [data-bs-theme="dark"] .form-label {
-            color: #f8f9fa; /* Czysta biel dla etykiet, żeby odcinały się od tła */
+            color: #f8f9fa;
             letter-spacing: 0.3px;
         }
         [data-bs-theme="dark"] .invalid-feedback {
-            color: #ff6b6b; /* Jaśniejszy, bardziej "neonowy" czerwony dla lepszego kontrastu */
+            color: #ff6b6b;
             font-weight: 500;
         }
         [data-bs-theme="dark"] .form-control,
@@ -42,71 +36,64 @@
     </style>
 </head>
 <body class="bg-body text-body">
-{# Główna belka nawigacyjna (Navbar) #}
 <nav class="navbar navbar-expand-lg navbar-dark bg-danger shadow-sm sticky-top">
     <div class="container">
         <a class="navbar-brand fw-bold fs-4" href="/">LifeInvader</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3 ms-auto mt-2 mt-lg-0">
+                <form action="/toggle-theme" method="POST" class="m-0">
+                    <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3">
+                        {% if session.theme_preference == 'dark' %}
+                            <i class="bi bi-sun-fill text-warning"></i> Jasny
+                        {% else %}
+                            <i class="bi bi-moon-fill"></i> Ciemny
+                        {% endif %}
+                    </button>
+                </form>
 
-        <div class="d-flex align-items-center gap-3 ms-auto">
-            {# Przełącznik motywu #}
-            <form action="/toggle-theme" method="POST" class="m-0">
-                <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3">
-                    {% if session.theme_preference == 'dark' %}
-                        <i class="bi bi-sun-fill text-warning"></i> Jasny
-                    {% else %}
-                        <i class="bi bi-moon-fill"></i> Ciemny
-                    {% endif %}
-                </button>
-            </form>
-
-            {% if session.user_id %}
-
-                {# NOWE: Przycisk Wiadomości Prywatnych #}
-                <a href="/messages" id="navMessagesBtn" class="btn btn-sm {% if global_unread_count > 0 %}btn-warning text-dark{% else %}btn-outline-light{% endif %} rounded-pill fw-bold px-3 me-1" title="Skrzynka odbiorcza">
-                    <i class="bi {% if global_unread_count > 0 %}bi-envelope-exclamation-fill{% else %}bi-chat-dots-fill{% endif %} me-1"></i>
-                    Wiadomości
-                    <span id="navMessagesBadge" class="badge bg-danger ms-1 rounded-circle" {% if not (global_unread_count > 0) %}style="display: none;"{% endif %}>{{ global_unread_count|default(0) }}</span>
-                </a>
-
-                {# Link do panelu widoczny tylko dla roli admin #}
-                {% if session.role == 'admin' %}
-                    <a href="/admin" class="btn btn-sm btn-warning rounded-pill fw-bold px-3 text-dark me-1" title="Panel Administratora">
-                        <i class="bi bi-key-fill"></i> Panel Admina
+                {% if session.user_id %}
+                    <a href="/messages" id="navMessagesBtn" class="btn btn-sm {% if global_unread_count > 0 %}btn-warning text-dark{% else %}btn-outline-light{% endif %} rounded-pill fw-bold px-3 me-1" title="Skrzynka odbiorcza">
+                        <i class="bi {% if global_unread_count > 0 %}bi-envelope-exclamation-fill{% else %}bi-chat-dots-fill{% endif %} me-1"></i>
+                        Wiadomości
+                        <span id="navMessagesBadge" class="badge bg-danger ms-1 rounded-circle" {% if not (global_unread_count > 0) %}style="display: none;"{% endif %}>{{ global_unread_count|default(0) }}</span>
                     </a>
+
+                    {% if session.role == 'admin' %}
+                        <a href="/admin" class="btn btn-sm btn-warning rounded-pill fw-bold px-3 text-dark me-1" title="Panel Administratora">
+                            <i class="bi bi-key-fill"></i> Panel Admina
+                        </a>
+                    {% endif %}
+
+                    <a href="/profile/{{ session.username }}" class="text-white text-decoration-none d-flex align-items-center gap-2 fw-semibold border border-white border-0 rounded-pill pe-2">
+                        <img src="{{ session.avatar_path|default('/uploads/avatars/default.png') }}"
+                             alt="Twój awatar"
+                             class="rounded-circle border border-white border-2"
+                             style="width: 32px; height: 32px; object-fit: cover;">
+                        <span>@{{ session.username }}</span>
+                    </a>
+
+                    <a href="/logout" class="text-decoration-none small fw-bold logout-link ms-2">Wyloguj</a>
+                {% else %}
+                    <a href="/login" class="btn btn-sm btn-outline-light rounded-pill px-3">Zaloguj się</a>
                 {% endif %}
-
-                {# JEDEN POŁĄCZONY LINK: Awatar + Nazwa użytkownika #}
-                <a href="/profile/{{ session.username }}" class="text-white text-decoration-none d-flex align-items-center gap-2 fw-semibold border border-white border-0 rounded-pill pe-2">
-                    <img src="{{ session.avatar_path|default('/uploads/avatars/default.png') }}"
-                         alt="Twój awatar"
-                         class="rounded-circle border border-white border-2"
-                         style="width: 32px; height: 32px; object-fit: cover;">
-                    <span>@{{ session.username }}</span>
-                </a>
-
-                {# Przycisk wylogowania #}
-                <a href="/logout" class="text-decoration-none small fw-bold logout-link ms-2">Wyloguj</a>
-            {% else %}
-                <a href="/login" class="btn btn-sm btn-outline-light rounded-pill px-3">Zaloguj się</a>
-            {% endif %}
+            </div>
         </div>
     </div>
 </nav>
 
-{# Kontener na dynamiczną treść podstron (home, profile, edit itp.) #}
 <main class="py-4">
     {% block content %}{% endblock %}
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fslightbox/3.3.1/index.min.js"></script>
 
-{# Skrypt JS: Zapobiega zwijaniu się komentarzy po przeładowaniu strony #}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         {% if session.user_id %}
-        // Globalny automat sprawdzający liczniki nieprzeczytanych wiadomości (Działa na każdej stronie!)
         setInterval(function() {
             fetch('/api/messages/counters')
                 .then(res => res.json())
@@ -115,7 +102,6 @@
                         const badge = document.getElementById('navMessagesBadge');
                         const btn = document.getElementById('navMessagesBtn');
 
-                        // A. Aktualizacja głównej belki (Navbar)
                         if (data.global_unread_count > 0) {
                             if (btn) { btn.className = 'btn btn-sm btn-warning text-dark rounded-pill fw-bold px-3 me-1'; }
                             if (badge) {
@@ -127,7 +113,6 @@
                             if (badge) { badge.style.display = 'none'; }
                         }
 
-                        // B. Aktualizacja paska bocznego konwersacji (jeśli jesteśmy w widoku wiadomości)
                         if (window.location.pathname === '/messages') {
                             data.threads.forEach(thread => {
                                 const threadBadge = document.getElementById(`sidebar-badge-${thread.user_id}`);
@@ -135,7 +120,6 @@
                                 const receiverInput = document.getElementById('receiverId');
                                 const activeChatId = receiverInput ? parseInt(receiverInput.value) : null;
 
-                                // Aktualizujemy tylko te wątki, które nie są aktualnie otwarte na ekranie
                                 if (thread.user_id !== activeChatId) {
                                     if (thread.unread_count > 0) {
                                         if (threadBadge) {
@@ -153,7 +137,7 @@
                     }
                 })
                 .catch(err => console.error("Błąd globalnego licznika:", err));
-        }, 3000); // Sprawdzaj co 3 sekundy
+        }, 3000);
         {% endif %}
     });
 </script>

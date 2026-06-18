@@ -1,52 +1,127 @@
 {% extends 'base.html.twig' %}
 
+{% block title %}Strona Główna - LifeInvader{% endblock %}
+
 {% block content %}
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 
-    <div class="container mt-4">
-        {# Formularz tworzenia posta z obsługą plików #}
+    <div class="container mt-4 mb-5">
+        {# Formularz tworzenia posta z obsługą plików i edytorem Quill #}
         <div class="card mb-4 shadow-sm border-0 rounded-4">
             <div class="card-body">
                 <form action="/post/create" method="POST" enctype="multipart/form-data" id="postForm">
 
                     {# Kontener na edytor Quill #}
-                    <div id="quill-editor" style="height: 120px; border-bottom-left-radius: 0; border-bottom-right-radius: 0;"></div>
+                    <div id="quill-editor"
+                         style="height: 120px; border-bottom-left-radius: 0; border-bottom-right-radius: 0;"></div>
 
                     {# Ukryte pole, do którego JS przerzuci HTML z Quilla przed wysłaniem #}
                     <input type="hidden" name="content" id="hidden-content">
 
-                    <div class="d-flex justify-content-between align-items-center mt-2 border p-2 rounded-bottom bg-body-tertiary" style="border-top: none !important;">
+                    <div class="d-flex justify-content-between align-items-center mt-2 border p-2 rounded-bottom bg-body-tertiary"
+                         style="border-top: none !important;">
                         <div>
                             <label for="post-images" class="btn btn-sm btn-outline-secondary mb-0">
                                 <i class="bi bi-camera"></i> Dodaj zdjęcia
                             </label>
-                            <input type="file" id="post-images" name="images[]" multiple accept="image/*" class="d-none">
+                            <input type="file" id="post-images" name="images[]" multiple accept="image/*"
+                                   class="d-none">
                             <span id="file-count" class="small ms-2 text-muted"></span>
                         </div>
-                        <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">Opublikuj</button>
+                        <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4 shadow-sm">Opublikuj
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        {# Pasek sortowania #}
+        {# --- NOWE: Pasek wyszukiwania i przycisk Eksportu JSON --- #}
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-3">
+            <form action="/" method="GET" class="flex-grow-1 m-0">
+                {# Zachowujemy obecne sortowanie przy wyszukiwaniu #}
+                {% if current_sort %}
+                    <input type="hidden" name="sort" value="{{ current_sort }}">
+                {% endif %}
+
+                <div class="input-group shadow-sm rounded-pill overflow-hidden">
+                    <span class="input-group-text bg-white border-0 text-body-secondary pe-0">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" value="{{ search_query }}"
+                           class="form-control border-0 bg-white shadow-none"
+                           placeholder="Szukaj postów po treści lub autorze...">
+                    {% if search_query %}
+                        <a href="/{% if current_sort %}?sort={{ current_sort }}{% endif %}"
+                           class="btn btn-light border-0" title="Wyczyść wyszukiwanie"><i class="bi bi-x-lg"></i></a>
+                    {% endif %}
+                    <button class="btn btn-dark px-4 fw-bold" type="submit">Szukaj</button>
+                </div>
+            </form>
+
+            <a href="/?export=json{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}"
+               class="btn btn-success rounded-pill fw-bold px-4 shadow-sm text-nowrap">
+                <i class="bi bi-file-earmark-code-fill me-1"></i> Pobierz JSON
+            </a>
+        </div>
+
+        {# Pasek sortowania (zaktualizowane linki, żeby nie gubiły frazy wyszukiwania) #}
         <div class="d-flex gap-2 mb-3">
-            <a href="?sort=last_activity_at" class="btn btn-sm {% if current_sort == 'last_activity_at' or not current_sort %}btn-dark{% else %}btn-outline-dark{% endif %}">
+            <a href="?sort=last_activity_at{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="btn btn-sm {% if current_sort == 'last_activity_at' or not current_sort %}btn-dark{% else %}btn-outline-dark shadow-sm bg-white{% endif %} rounded-pill px-3">
                 Najnowsza aktywność
             </a>
-            <a href="?sort=created_at" class="btn btn-sm {% if current_sort == 'created_at' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+            <a href="?sort=created_at{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="btn btn-sm {% if current_sort == 'created_at' %}btn-dark{% else %}btn-outline-dark shadow-sm bg-white{% endif %} rounded-pill px-3">
                 Najnowsze posty
             </a>
         </div>
 
-        {# Lista postów (korzysta z partiala DRY) #}
+        {# Lista postów #}
         {% for post in posts %}
             {% include 'partials/post_card.html.twig' %}
         {% else %}
-            <div class="alert alert-info text-center rounded-4">
-                Brak postów. Bądź pierwszy i napisz coś!
+            <div class="text-center py-5 text-body-secondary bg-light-subtle rounded-4 shadow-sm mb-4">
+                <i class="bi bi-emoji-frown display-4 mb-3 d-block text-muted"></i>
+                <h5>Brak postów do wyświetlenia</h5>
+                <p class="mb-0">{% if search_query %}Nie znaleziono wyników dla tej frazy.{% else %}Bądź pierwszy i napisz coś!{% endif %}</p>
             </div>
         {% endfor %}
+
+        {# --- NOWE: Paginacja na dole strony --- #}
+        {% if total_pages > 1 %}
+            <nav aria-label="Nawigacja stron" class="mt-4">
+                <ul class="pagination justify-content-center shadow-sm rounded-pill overflow-hidden"
+                    style="width: fit-content; margin: 0 auto;">
+
+                    {# Przycisk Wstecz #}
+                    <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+                        <a class="page-link border-0 {% if current_page <= 1 %}text-muted{% else %}text-body{% endif %}"
+                           href="?page={{ current_page - 1 }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}">
+                            Poprzednia
+                        </a>
+                    </li>
+
+                    {# Numery stron #}
+                    {% for i in 1..total_pages %}
+                        <li class="page-item {% if i == current_page %}active{% endif %}">
+                            <a class="page-link border-0 {% if i == current_page %}bg-danger text-white{% else %}text-body{% endif %}"
+                               href="?page={{ i }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}">
+                                {{ i }}
+                            </a>
+                        </li>
+                    {% endfor %}
+
+                    {# Przycisk Dalej #}
+                    <li class="page-item {% if current_page >= total_pages %}disabled{% endif %}">
+                        <a class="page-link border-0 {% if current_page >= total_pages %}text-muted{% else %}text-body{% endif %}"
+                           href="?page={{ current_page + 1 }}{% if search_query %}&q={{ search_query }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}">
+                            Następna
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+        {% endif %}
     </div>
 
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
@@ -57,17 +132,17 @@
             modules: {
                 toolbar: [
                     ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{'list': 'ordered'}, {'list': 'bullet'}],
                     ['link']
                 ]
             }
         });
 
-        document.getElementById('postForm').onsubmit = function() {
+        document.getElementById('postForm').onsubmit = function () {
             document.getElementById('hidden-content').value = quill.root.innerHTML;
         };
 
-        document.getElementById('post-images').addEventListener('change', function() {
+        document.getElementById('post-images').addEventListener('change', function () {
             var count = this.files.length;
             document.getElementById('file-count').textContent = count > 0 ? 'Wybrano plików: ' + count : '';
         });

@@ -1,0 +1,140 @@
+{% extends 'base.html.twig' %}
+{% block title %}Panel Administratora - LifeInvader{% endblock %}
+
+{% block content %}
+    <div class="container mt-4 mb-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Panel Administratora</h2>
+            <a href="/admin/audit" class="btn btn-outline-secondary"><i class="bi bi-journal-text"></i> Dziennik Audytu</a>
+        </div>
+
+        {# Wyświetlanie błędu (np. gdy admin próbuje skasować sam siebie) #}
+        {% if session.error %}
+            <div class="alert alert-danger rounded-4 shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session.error }}
+                {% set _ = session.remove('error') %} {# Czyszczenie błędu po wyświetleniu #}
+            </div>
+        {% endif %}
+
+        {# SEKCJA 1: Zagregowane dane (Kafelki podsumowujące) #}
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 rounded-4 shadow-sm bg-primary text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="display-4 me-3"><i class="bi bi-people-fill"></i></div>
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-0 text-white-50">Użytkownicy</h6>
+                            <h2 class="fw-black mb-0">{{ stats.total_users }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 rounded-4 shadow-sm bg-success text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="display-4 me-3"><i class="bi bi-file-post"></i></div>
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-0 text-white-50">Opublikowane posty</h6>
+                            <h2 class="fw-black mb-0">{{ stats.total_posts }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 rounded-4 shadow-sm bg-danger text-white h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="display-4 me-3"><i class="bi bi-chat-dots-fill"></i></div>
+                        <div>
+                            <h6 class="text-uppercase fw-bold mb-0 text-white-50">Prywatne wiadomości</h6>
+                            <h2 class="fw-black mb-0">{{ stats.total_messages }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# SEKCJA 2: Tablica z ludkami (Zarządzanie kontami) #}
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-header bg-body-tertiary border-bottom py-3 rounded-top-4">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-table me-2"></i>Lista użytkowników</h5>
+            </div>
+            <div class="card-body p-0 overflow-auto">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-uppercase small text-body-secondary">
+                    <tr>
+                        <th class="px-4 py-3">ID</th>
+                        <th class="py-3">Użytkownik</th>
+                        <th class="py-3">E-mail</th>
+                        <th class="py-3">Rola</th>
+                        <th class="py-3">Data rejestracji</th>
+                        <th class="px-4 py-3 text-end">Akcje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for u in users %}
+                        <tr>
+                            <td class="px-4 fw-bold text-body-secondary">#{{ u.id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ u.avatar_path|default('/uploads/avatars/default.png') }}" class="rounded-circle border" style="width: 32px; height: 32px; object-fit: cover;">
+                                    <a href="/profile/{{ u.username }}" class="text-decoration-none fw-bold text-body">@{{ u.username }}</a>
+                                </div>
+                            </td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                {% if u.role == 'admin' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Admin</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">User</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-body-secondary">{{ u.created_at|date('d.m.Y H:i') }}</td>
+                            <td class="px-4 text-end">
+                                {# Zablokowanie edycji samego siebie #}
+                                {% if u.id == session.user_id %}
+                                    <span class="text-body-secondary small fw-bold me-2">Twoje konto</span>
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill disabled" title="Brak akcji"><i class="bi bi-shield-slash"></i></button>
+                                {% else %}
+
+                                    {# GUZIKI ROLI: Promote / Demote #}
+                                    {% if u.role == 'admin' %}
+                                        <a href="/admin/user/role/{{ u.id }}" class="btn btn-sm btn-outline-warning text-dark rounded-pill shadow-sm me-1"
+                                           onclick="return confirm('Czy na pewno chcesz ZDEGRADOWAĆ tego administratora do roli zwykłego użytkownika?');">
+                                            <i class="bi bi-arrow-down-circle-fill"></i> Zdegraduj do usera
+                                        </a>
+                                    {% else %}
+                                        <a href="/admin/user/role/{{ u.id }}" class="btn btn-sm btn-outline-success rounded-pill shadow-sm me-1"
+                                           onclick="return confirm('Czy na pewno chcesz AWANSOWAĆ tego użytkownika? Otrzyma on pełny dostęp do panelu administracyjnego.');">
+                                            <i class="bi bi-arrow-up-circle-fill"></i> Awansuj na admina
+                                        </a>
+                                    {% endif %}
+
+                                    {# GUZIK USUWANIA #}
+                                    <a href="/admin/user/delete/{{ u.id }}" class="btn btn-sm btn-outline-danger rounded-pill shadow-sm"
+                                       onclick="return confirm('Czy na pewno chcesz bezpowrotnie usunąć użytkownika @{{ u.username }} oraz całą jego aktywność?');">
+                                        <i class="bi bi-trash-fill"></i> Usuń
+                                    </a>
+
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-body-secondary">Brak użytkowników w bazie.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <a href="/admin?export=csv" class="btn btn-sm btn-success"><i class="bi bi-filetype-csv"></i> Eksportuj</a>
+            </div>
+        </div>
+
+    </div>
+
+    <style>
+        .fw-black { font-weight: 900 !important; }
+        /* Wymuszamy responsywność tabeli, żeby nie rozwaliła designu na telefonach */
+        .overflow-auto { max-width: 100%; overflow-x: auto; }
+    </style>
+{% endblock %}
