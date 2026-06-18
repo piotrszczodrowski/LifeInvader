@@ -17,13 +17,13 @@
 .DS_Store
 
 # ignore all uploaded avatars
-uploads/avatars/*
+src/uploads/avatars/*
 # but save default
-!uploads/avatars/default.png
+!src/uploads/avatars/default.png
 
 # ignore uploaded pics, but track dir
-uploads/posts/*
-!uploads/posts/.gitkeep
+src/uploads/posts/*
+!src/uploads/posts/.gitkeep
 
 #database migration files
 src/database/migrations
