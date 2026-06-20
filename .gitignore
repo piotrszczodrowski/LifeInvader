@@ -2,7 +2,7 @@
 /vendor/
 
 # Error log
-/src/logs
+/src/logs/*
 
 # secrets and config
 .env
@@ -16,9 +16,10 @@
 # IDE config
 .idea/
 
-# system files
+# mac crap
 .DS_Store
 ._.DS_Store
+._*
 
 # ignore all uploaded avatars
 src/uploads/avatars/*
