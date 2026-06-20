@@ -3,7 +3,7 @@
 
 # Error log
 /src/logs/*
-
+/src/logs
 # secrets and config
 .env
 /src/.env
@@ -35,3 +35,6 @@ src/database/migrations
 
 # class model
 class_model.puml
+
+#cleanup
+cleanup_mac_junk.sh
