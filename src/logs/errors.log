@@ -341,3 +341,4 @@ Stack trace:
 [2026-06-18 18:31:52] Błąd 500: syntax error, unexpected token "." w /var/www/html/app/Controllers/AuthController.php:169
 [2026-06-18 18:32:52] Błąd 500: syntax error, unexpected token "." w /var/www/html/app/Controllers/AuthController.php:169
 [2026-06-18 18:33:52] Błąd 500: syntax error, unexpected token "." w /var/www/html/app/Controllers/AuthController.php:169
+[2026-06-19 06:00:58] Błąd 404: Not Found w :0

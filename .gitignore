@@ -1,6 +1,9 @@
 # Composer dependencies
 /vendor/
 
+# Error log
+/src/logs
+
 # secrets and config
 .env
 /src/.env
@@ -15,6 +18,7 @@
 
 # system files
 .DS_Store
+._.DS_Store
 
 # ignore all uploaded avatars
 src/uploads/avatars/*
@@ -27,3 +31,6 @@ src/uploads/posts/*
 
 #database migration files
 src/database/migrations
+
+# class model
+class_model.puml
