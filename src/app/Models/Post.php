@@ -55,41 +55,47 @@ class Post
      */
     public function getPaginatedPosts(int $limit, int $offset, string $searchQuery = '', string $sort = 'last_activity_at'): array
     {
+        $currentUserId = $_SESSION['user_id'] ?? 0;
+
         $orderBy = 'p.last_activity_at DESC';
         if ($sort === 'created_at') {
             $orderBy = 'p.created_at DESC';
         }
 
+        // PRZYWRÓCONE: is_liked, comments_count oraz zaciąganie pełnych komentarzy!
         $sql = "
             SELECT p.*, u.username, u.avatar_path,
                    (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+                   (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count,
+                   EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = :current_uid) as is_liked,
                    (SELECT GROUP_CONCAT(image_path SEPARATOR ',') FROM post_images WHERE post_id = p.id) as images
             FROM posts p JOIN users u ON p.user_id = u.id
         ";
 
-        $params = [];
         if (!empty($searchQuery)) {
-            $sql .= " WHERE p.content LIKE ? OR u.username LIKE ? ";
-            $params[] = "%$searchQuery%";
-            $params[] = "%$searchQuery%";
+            $sql .= " WHERE p.content LIKE :search1 OR u.username LIKE :search2 ";
         }
 
-        $sql .= " ORDER BY $orderBy LIMIT ? OFFSET ?";
+        $sql .= " ORDER BY $orderBy LIMIT :limit OFFSET :offset";
 
         $stmt = $this->db->prepare($sql);
-        $paramIndex = 1;
-        foreach ($params as $param) {
-            $stmt->bindValue($paramIndex++, $param, \PDO::PARAM_STR);
+
+        $stmt->bindValue(':current_uid', $currentUserId, \PDO::PARAM_INT);
+        if (!empty($searchQuery)) {
+            $stmt->bindValue(':search1', "%$searchQuery%", \PDO::PARAM_STR);
+            $stmt->bindValue(':search2', "%$searchQuery%", \PDO::PARAM_STR);
         }
-        $stmt->bindValue($paramIndex++, $limit, \PDO::PARAM_INT);
-        $stmt->bindValue($paramIndex, $offset, \PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
 
         $stmt->execute();
         $posts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
+        $commentModel = new \App\Models\Comment();
         foreach ($posts as &$post) {
             $post['images'] = $post['images'] ? explode(',', $post['images']) : [];
             $post['content'] = $this->formatMentions($post['content']);
+            $post['comments_list'] = $commentModel->getByPostId($post['id']);
         }
 
         return $posts;

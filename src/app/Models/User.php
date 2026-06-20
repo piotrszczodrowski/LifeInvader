@@ -92,4 +92,10 @@ class User
         $stmt = $this->db->prepare("UPDATE users SET role = ? WHERE id = ?");
         return $stmt->execute([$role, $userId]);
     }
+
+    public function updateProfile(int $userId, string $bio, string $avatarPath): bool
+    {
+        $stmt = $this->db->prepare("UPDATE users SET bio = ?, avatar_path = ? WHERE id = ?");
+        return $stmt->execute([$bio, $avatarPath, $userId]);
+    }
 }

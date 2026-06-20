@@ -1,4 +1,4 @@
-<div class="card mb-4 shadow-sm border-0 rounded-4">
+<div class="card mb-4 shadow-sm border-0 rounded-4" id="post-{{ post.id }}">
     <div class="card-body">
 
         {# 1. Nagłówek posta #}
@@ -18,7 +18,18 @@
         </div>
 
         {# 3. Galeria zdjęć (jeśli są) #}
-        {% if post.images|length > 0 %}
+        {% if post.images|length == 1 %}
+            {# Wyświetlanie pojedynczego zdjęcia bez kadrowania #}
+            <div class="mb-3 text-center">
+                <a data-fslightbox="gallery-{{ post.id }}" href="{{ post.images[0] }}">
+                    <img src="{{ post.images[0] }}" class="img-fluid rounded shadow-sm" alt="Zdjęcie do posta"
+                         style="max-height: 600px; width: auto; max-width: 100%; cursor: zoom-in; transition: transform 0.3s;"
+                         onmouseover="this.style.transform='scale(1.02)'"
+                         onmouseout="this.style.transform='scale(1)'">
+                </a>
+            </div>
+        {% elseif post.images|length > 1 %}
+            {# Siatka dla wielu zdjęć (docinana do 200px) #}
             <div class="row g-2 mb-3">
                 {% for img in post.images %}
                     <div class="col-6 col-md-4 overflow-hidden rounded">
@@ -41,11 +52,10 @@
                 {% if post.user_id == session.user_id %}
                     <button class="btn btn-sm btn-outline-secondary" disabled>👍 {{ post.likes_count }}</button>
                 {% else %}
-                    <form action="/post/like/{{ post.id }}" method="POST" class="d-inline m-0">
-                        <button type="submit" class="btn btn-sm {% if post.is_liked %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                            👍 {{ post.likes_count }}
-                        </button>
-                    </form>
+                    {# Zamieniono z FORM na zwykły przycisk A, by współpracował z Routerem (GET) #}
+                    <a href="/post/like/{{ post.id }}" class="btn btn-sm {% if post.is_liked %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                        👍 {{ post.likes_count }}
+                    </a>
                 {% endif %}
 
                 {# Przycisk rozwijający komentarze #}
@@ -64,12 +74,10 @@
                     <button type="button" class="btn btn-sm btn-outline-danger" title="Usuń post" data-bs-toggle="modal" data-bs-target="#deleteModal{{ post.id }}">
                         <i class="bi bi-trash"></i>
                     </button>
-                {% else %}
-                    {# Puste miejsce na flagę/zgłoszenie w przyszłości #}
                 {% endif %}
             </div>
 
-        </div> {# KONIEC PASKA AKCJI - TEN ZAMYKAJĄCY DIV JEST KRYTYCZNY #}
+        </div> {# KONIEC PASKA AKCJI #}
 
         {# 5. Modal Usuwania (ukryty) #}
         {% if post.user_id == session.user_id %}
@@ -96,8 +104,8 @@
             </div>
         {% endif %}
 
-        {# 6. Sekcja Komentarzy (Rozwijana) - TERAZ JEST POD PASKIEM AKCJI #}
-        <div class="collapse mt-3" id="commentsCollapse{{ post.id }}">
+        {# 6. Sekcja Komentarzy (Rozwijana) #}
+        <div class="collapse mt-3 {% if open_comments == post.id %}show{% endif %}" id="commentsCollapse{{ post.id }}">
             <hr class="text-secondary opacity-25 mt-0 mb-3">
 
             <div class="mb-3">
