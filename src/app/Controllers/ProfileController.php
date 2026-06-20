@@ -1,71 +1,50 @@
 <?php
+
 namespace App\Controllers;
 
-use App\Models\User;
 use App\Core\Controller;
+use App\Services\ProfileService;
+use App\Models\User;
 
-class ProfileController extends Controller {
-
-    public function __construct() {
+class ProfileController extends Controller
+{
+    public function __construct(
+        private ProfileService $profileService,
+        private User $userModel
+    ) {
         parent::__construct();
     }
 
-    /**
-     * Wyświetla formularz edycji profilu zalogowanego użytkownika.
-     */
-    public function edit() {
+    public function edit()
+    {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
         }
 
-        $userModel = new User();
-        $user = $userModel->findById($_SESSION['user_id']);
-
+        $user = $this->userModel->findById($_SESSION['user_id']);
         $this->render('profile_edit', ['user' => $user]);
     }
 
-    /**
-     * Aktualizuje profil użytkownika (bio, awatar).
-     */
-    public function update() {
+    public function update()
+    {
         if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: /login');
             exit;
         }
 
-        $userModel = new User();
-        $currentUser = $userModel->findById($_SESSION['user_id']);
-
         $bio = substr(trim($_POST['bio'] ?? ''), 0, 255);
-        $avatarPath = $currentUser['avatar_path'];
+        $avatarFile = $_FILES['avatar'] ?? null;
 
-        if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/avatars/';
-            $fileTmp = $_FILES['avatar']['tmp_name'];
-            $fileType = mime_content_type($fileTmp);
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        $result = $this->profileService->updateProfile($_SESSION['user_id'], $bio, $avatarFile);
 
-            if (in_array($fileType, $allowedTypes)) {
-                $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
-                $fileName = uniqid('avatar_') . '.' . $ext;
-                $destination = $uploadDir . $fileName;
-
-                if (move_uploaded_file($fileTmp, $destination)) {
-                    $avatarPath = '/uploads/avatars/' . $fileName;
-                }
-            }
-        }
-
-        $userModel->updateProfile($_SESSION['user_id'], $bio, $avatarPath);
-        $_SESSION['avatar_path'] = $avatarPath;
+        $_SESSION['avatar_path'] = $result['avatar_path'];
         header('Location: /profile/edit?success=1');
         exit;
     }
 
-    /**
-     * Wyświetla publiczny profil użytkownika wraz z jego postami.
-     */
+
+
     public function show($username)
     {
         if (!isset($_SESSION['user_id'])) {
@@ -73,20 +52,13 @@ class ProfileController extends Controller {
             exit;
         }
 
-        $userModel = new User();
-        $profileUser = $userModel->findByUsername($username);
+        $profileData = $this->profileService->getProfile($username, $_SESSION['user_id']);
 
-        if (!$profileUser) {
+        if (!$profileData) {
             (new ErrorController())->show(404, "Not Found");
             return;
         }
 
-        $postModel = new \App\Models\Post();
-        $posts = $postModel->getAllByUserId($profileUser['id'], $_SESSION['user_id']);
-
-        $this->render('profile', [
-            'profile_user' => $profileUser,
-            'posts' => $posts
-        ]);
+        $this->render('profile', $profileData);
     }
 }

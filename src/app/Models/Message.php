@@ -14,10 +14,22 @@ class Message
         $this->db = Database::getConnection();
     }
 
-    public function send(int $senderId, int $receiverId, string $content): bool
+    public function send(int $senderId, int $receiverId, string $content): ?array
     {
         $stmt = $this->db->prepare("INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)");
-        return $stmt->execute([$senderId, $receiverId, $content]);
+        if ($stmt->execute([$senderId, $receiverId, $content])) {
+            $lastId = $this->db->lastInsertId();
+            return $this->findById($lastId);
+        }
+        return null;
+    }
+
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->db->prepare("SELECT m.*, u.username, u.avatar_path FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.id = ?");
+        $stmt->execute([$id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
     }
 
     /**

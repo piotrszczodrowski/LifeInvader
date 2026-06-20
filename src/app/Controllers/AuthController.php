@@ -2,31 +2,24 @@
 
 namespace App\Controllers;
 
-use App\Models\User;
 use App\Core\Controller;
+use App\Services\AuthService;
+use App\Services\UserService;
 
 class AuthController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private AuthService $authService,
+        private UserService $userService
+    ) {
         parent::__construct();
     }
 
-    /**
-     * Wyświetla formularz logowania.
-     */
     public function showLogin()
     {
-        if (isset($_SESSION['user_id'])) {
-            header('Location: /');
-            exit;
-        }
-        $this->render('login');
+        $this->render('login', ['cf_site_key' => $_ENV['CLOUDFLARE_SITE_KEY'] ?? '']);
     }
 
-    /**
-     * Wyświetla formularz rejestracji z obsługą błędów i zapamiętywaniem starych danych.
-     */
     public function showRegister()
     {
         $errors = $_SESSION['errors'] ?? [];
@@ -42,101 +35,66 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Przetwarza dane z formularza rejestracji, waliduje je i tworzy nowego użytkownika.
-     */
     public function register()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $username = trim($_POST['username'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $password = $_POST['password'] ?? '';
-            $birthDate = $_POST['birth_date'] ?? '';
-            $tos = isset($_POST['tos']);
-            $turnstileResponse = $_POST['cf-turnstile-response'] ?? '';
+            $data = [
+                'username' => trim($_POST['username'] ?? ''),
+                'email' => trim($_POST['email'] ?? ''),
+                'password' => $_POST['password'] ?? '',
+                'birth_date' => $_POST['birth_date'] ?? '',
+                'tos' => isset($_POST['tos']),
+                'turnstileResponse' => $_POST['cf-turnstile-response'] ?? '',
+                'theme_preference' => $_SESSION['theme_preference'] ?? 'light'
+            ];
 
-            $errors = [];
+            $result = $this->authService->register($data);
 
-            // Walidacja Cloudflare Turnstile
-            if (empty($turnstileResponse)) {
-                $errors['captcha'] = "Potwierdź, że jesteś człowiekiem.";
-            } else {
-                $secretKey = $_ENV['CLOUDFLARE_SECRET_KEY'] ?? '';
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, "https://challenges.cloudflare.com/turnstile/v0/siteverify");
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['secret' => $secretKey, 'response' => $turnstileResponse]));
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                $response = json_decode(curl_exec($ch), true);
-                curl_close($ch);
-
-                if (!$response['success']) {
-                    $errors['captcha'] = "Weryfikacja anty-botowa nie powiodła się.";
-                }
-            }
-
-            // Walidacja danych
-            if (strlen($username) < 3) $errors['username'] = "Login musi mieć co najmniej 3 znaki.";
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = "Niepoprawny format e-mail.";
-            if (strlen($password) < 6) $errors['password'] = "Hasło musi mieć minimum 6 znaków.";
-            if (empty($birthDate)) $errors['birth_date'] = "Musisz podać datę urodzenia.";
-            if (!$tos) $errors['tos'] = "Musisz zapoznać się z regulaminem.";
-
-            // Walidacja unikalności
-            $userModel = new \App\Models\User();
-            if (empty($errors)) {
-                if ($userModel->findByUsername($username)) $errors['username'] = "Taki użytkownik już istnieje.";
-                if ($userModel->findByEmail($email)) $errors['email'] = "Ten e-mail jest już zajęty.";
-            }
-
-            if (!empty($errors)) {
-                $_SESSION['errors'] = $errors;
-                $_SESSION['old'] = ['username' => $username, 'email' => $email, 'birth_date' => $birthDate];
+            if (isset($result['errors'])) {
+                $_SESSION['errors'] = $result['errors'];
+                $_SESSION['old'] = ['username' => $data['username'], 'email' => $data['email'], 'birth_date' => $data['birth_date']];
                 header('Location: /register');
                 exit;
             }
 
-            $currentTheme = $_SESSION['theme_preference'] ?? 'light';
-            $userModel->create($username, $email, $password, $birthDate, $currentTheme);
             header('Location: /login');
             exit;
         }
     }
 
-    /**
-     * Przetwarza logowanie użytkownika i ustawia sesję.
-     */
     public function login()
     {
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $email = trim($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $turnstileResponse = $_POST['cf-turnstile-response'] ?? '';
 
-        $userModel = new User();
-        $user = $userModel->findByEmail($email);
+            $user = $this->authService->login($email, $password, $turnstileResponse);
 
-        if ($user && password_verify($password, $user['password_hash'])) {
-            session_regenerate_id(true);
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['theme_preference'] = $user['theme_preference'] ?? 'light';
-            $_SESSION['must_change_password'] = $user['must_change_password'];
-            $_SESSION['avatar_path'] = $user['avatar_path'] ?? '/uploads/avatars/default.png';
-
-            if ($_SESSION['must_change_password'] == 1) {
-                header('Location: /force-password-change');
-            } else {
-                header('Location: /');
+            if (isset($user['error'])) {
+                $this->render('login', ['error' => $user['error'], 'cf_site_key' => $_ENV['CLOUDFLARE_SITE_KEY'] ?? '']);
+                return;
             }
-            exit;
-        }
 
-        $this->render('login', ['error' => 'Nieprawidłowy email lub hasło.']);
+            if ($user) {
+                session_regenerate_id(true);
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['theme_preference'] = $user['theme_preference'] ?? 'light';
+                $_SESSION['must_change_password'] = $user['must_change_password'];
+                $_SESSION['avatar_path'] = $user['avatar_path'] ?? '/uploads/avatars/default.png';
+
+                if ($_SESSION['must_change_password'] == 1) {
+                    header('Location: /force-password-change');
+                } else {
+                    header('Location: /');
+                }
+                exit;
+            }
+        }
     }
 
-    /**
-     * Wylogowuje użytkownika.
-     */
     public function logout()
     {
         session_unset();
@@ -145,9 +103,6 @@ class AuthController extends Controller
         exit;
     }
 
-    /**
-     * Wyświetla formularz wymuszonej zmiany hasła.
-     */
     public function showForceChangePassword()
     {
         if (!isset($_SESSION['user_id'])) {
@@ -162,9 +117,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Przetwarza wymuszoną zmianę hasła.
-     */
     public function forceChangePassword()
     {
         if (!isset($_SESSION['user_id'])) {
@@ -184,8 +136,7 @@ class AuthController extends Controller
             return;
         }
 
-        $userModel = new User();
-        if ($userModel->updatePassword($_SESSION['user_id'], $password)) {
+        if ($this->userService->changePassword($_SESSION['user_id'], $password)) {
             $_SESSION['must_change_password'] = 0;
             header('Location: /');
             exit;
